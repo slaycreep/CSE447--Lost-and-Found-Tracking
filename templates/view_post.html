@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.item_name }} - {{ post.type|title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Main Content Column -->
+        <div class="{% if post.type == 'lost' %}col-md-8{% else %}col-md-8 mx-auto{% endif %}">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                    <h4 class="mb-0">
+                        <span class="badge {% if post.type == 'lost' %}bg-danger{% else %}bg-success{% endif %} me-2">
+                            {{ post.type|title }}
+                        </span>
+                        {{ post.item_name }}
+                    </h4>
+                    {% if is_owner %}
+                    <div>
+                        <a href="{{ url_for('posts.edit_post', post_id=post.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% if not is_owner and session.user_id %}
+                    <!--Report User Button-->
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    {% if post.images %}
+                    <div class="mb-4">
+                        <div class="row">
+                            {% for image in post.images.split(',') %}
+                            <div class="col-md-6 mb-3">
+                                <img src="{{ url_for('static', filename='uploads/' + image) }}"
+                                     class="img-fluid rounded shadow-sm" alt="Item image">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Category</h5>
+                        <p class="text-muted">{{ post.category_name|title }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Description</h5>
+                        <p class="text-muted">{{ post.description }}</p>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">Location</h5>
+                            <p class="text-muted"><i class="fas fa-map-marker-alt text-danger"></i> {{ post.location }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">Posted On</h5>
+                            <p class="text-muted"><i class="fas fa-calendar text-primary"></i> {{ post.post_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="border-bottom pb-2">{% if post.type == 'lost' %}Lost{% else %}Found{% endif %} On</h5>
+                            <p class="text-muted"><i class="fas fa-clock text-info"></i> {{ post.lOrF_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Contact Information</h5>
+                        <p class="text-muted"><i class="fas fa-user text-info"></i> {{ post_owner.name }}</p>
+                        {% if not is_owner and session.user_id %}
+                            {% if post.contact_method == 'Email' %}
+                                <p class="text-muted"><i class="fas fa-envelope text-secondary"></i> {{ post_owner.email }}</p>
+                            {% elif post.contact_method == 'Phone' or post.contact_method == 'WhatsApp' %}
+                                <p class="text-muted">
+                                    <i class="fas {% if post.contact_method == 'WhatsApp' %}fa-whatsapp{% else %}fa-phone{% endif %} text-success"></i>
+                                    {{ post_owner.contact_info }}
+                                </p>
+                            {% endif %}
+                            <p class="text-muted"><i class="fas fa-comment text-info"></i> Preferred contact method: {{ post.contact_method }}</p>
+
+                            {% if post.type == 'lost' %}
+                            <div class="mt-3">
+                                <a href="{{ url_for('chat.conversation', post_id=post.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-comments"></i> Chat with Owner
+                                </a>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Share This Post</h5>
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{{ url_for('posts.share_post', post_id=post.id, platform='facebook') }}"
+                               class="btn btn-primary" target="_blank">
+                                <i class="fab fa-facebook-f"></i> Share
+                            </a>
+                            <a href="{{ url_for('posts.share_post', post_id=post.id, platform='twitter') }}"
+                               class="btn btn-info text-white" target="_blank">
+                                <i class="fab fa-twitter"></i> Tweet
+                            </a>
+                            <a href="{{ url_for('posts.share_post', post_id=post.id, platform='whatsapp') }}"
+                               class="btn btn-success" target="_blank">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </a>
+                            <a href="{{ url_for('posts.share_post', post_id=post.id, platform='telegram') }}"
+                               class="btn btn-info" target="_blank">
+                                <i class="fab fa-telegram"></i> Telegram
+                            </a>
+                        </div>
+                        <p class="text-muted mt-2">
+                            <small><i class="fas fa-share-alt"></i> Shared {{ post.share_count }} times</small>
+                        </p>
+                    </div>
+
+                    {% if is_owner and post.type == 'found' %}
+                    <div class="mb-4">
+                        <a href="{{ url_for('verification.view_claims', post_id=post.id) }}" class="btn btn-info">
+                            <i class="fas fa-clipboard-check"></i> View Verification Claims
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if not is_owner and session.user_id and post.type == 'found' %}
+                    {% if not verification_claim %}
+                    <div class="mb-4">
+                        <a href="{{ url_for('verification.verify_item', post_id=post.id) }}" class="btn btn-success">
+                            <i class="fas fa-check-circle"></i> Is it yours? Verify Yourself
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if verification_claim %}
+                        {% if verification_claim.status == 'approved' %}
+                        <a href="{{ url_for('chat.conversation', post_id=post.id) }}" class="btn btn-primary w-100 mb-2">
+                            <i class="fas fa-comments"></i> Chat with Owner
+                        </a>
+                        {% endif %}
+                    <div class="mb-4">
+                        <div class="alert {% if verification_claim.status == 'approved' %}alert-success
+                                        {% elif verification_claim.status == 'rejected' %}alert-danger
+                                        {% else %}alert-warning{% endif %}">
+                            <h5 class="alert-heading">
+                                <i class="fas {% if verification_claim.status == 'approved' %}fa-check-circle
+                                            {% elif verification_claim.status == 'rejected' %}fa-times-circle
+                                            {% else %}fa-clock{% endif %}"></i>
+                                Verification Status: {{ verification_claim.status|title }}
+                            </h5>
+                            {% if verification_claim.status == 'pending' %}
+                                <p class="mb-0">Your verification claim is being reviewed by the item owner.</p>
+                            {% elif verification_claim.status == 'approved' %}
+                                <p class="mb-0">Your claim has been approved! Please contact the owner to retrieve your item.</p>
+                            {% else %}
+                                <p class="mb-0">Your claim has been rejected. If you believe this is a mistake, please contact support.</p>
+                            {% endif %}
+                            <p class="mb-0 mt-2"><small>Submitted on: {{ verification_claim.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</small></p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
+                    {% if session['user_id'] != post.user_id %}
+                    <button class="btn btn-warning mt-3"
+                            onclick='showReportModal("post", "{{ post.user_id }}", "{{ post.id }}")'>
+                        Report Suspicious Post
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer bg-light">
+                    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Sidebar for Lost Items -->
+        {% if post.type == 'lost' and is_owner %}
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-comments"></i> Active Conversations</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% set active_chats = post.chats|groupby('sender_id')|list %}
+                        {% if active_chats %}
+                            {% for chat_group in active_chats %}
+                                {% set user = chat_group.list[0].sender %}
+                                {% if user.id != session.user_id %}
+                                <a href="{{ url_for('chat.conversation', post_id=post.id) }}"
+                                   class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">{{ user.name }}</h6>
+                                            <small class="text-muted">
+                                                {{ chat_group.list|length }} messages
+                                            </small>
+                                        </div>
+                                        {% set unread = chat_group.list|selectattr('is_read', 'equalto', false)|list|length %}
+                                        {% if unread > 0 %}
+                                        <span class="badge bg-primary rounded-pill">{{ unread }}</span>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                        <div class="text-center p-3">
+                            <p class="text-muted mb-0">No active conversations yet</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this post? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('posts.delete_post', post_id=post.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
