@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}OTP Codes Debug - Development Only{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h4 class="mb-0">🧪 Development: OTP Codes Debug</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>⚠️ WARNING:</strong> This page is only visible in development mode. Do not expose in production!
+                    </div>
+                    
+                    {% if otp_info %}
+                    <p><strong>Active OTP Codes:</strong> {{ otp_info|length }}</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>User Email</th>
+                                    <th>Code ID</th>
+                                    <th>Plain Code</th>
+                                    <th>Attempts</th>
+                                    <th>Created</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for code in otp_info %}
+                                <tr>
+                                    <td><code>{{ code.user_email }}</code></td>
+                                    <td><strong>#{{ code.code_id }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-info" style="font-size: 1em; font-family: monospace; letter-spacing: 2px;">
+                                            {% if code.plain_code %}
+                                                {{ code.plain_code }}
+                                            {% else %}
+                                                (hashed - not stored in DB)
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if code.attempts == 0 else 'warning' if code.attempts < 3 else 'danger' }}">
+                                            {{ code.attempts }}/{{ code.max_attempts }}
+                                        </span>
+                                    </td>
+                                    <td><small>{{ code.created_at }}</small></td>
+                                    <td><small>{{ code.expires_at }}</small></td>
+                                    <td>
+                                        {% if code.is_expired %}
+                                            <span class="badge bg-danger">Expired</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        No active OTP codes. Go to <a href="{{ url_for('auth.login') }}">login</a> and start 2FA to generate a code.
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h5>Instructions for Testing 2FA:</h5>
+                    <ol>
+                        <li>Go to <a href="{{ url_for('auth.login') }}">Login Page</a></li>
+                        <li>Enter email and password</li>
+                        <li>You'll be redirected to OTP verification page</li>
+                        <li>Return to this page to see the generated OTP code</li>
+                        <li>Copy the code and paste it back on the verification page</li>
+                        <li>Complete login after successful OTP verification</li>
+                    </ol>
+                    
+                    <h5 class="mt-4">Email Configuration for Production:</h5>
+                    <p>To enable actual email sending, set these environment variables:</p>
+                    <pre class="bg-light p-3"><code>MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_DEFAULT_SENDER=noreply@lostandfound.com</code></pre>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">← Back to Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

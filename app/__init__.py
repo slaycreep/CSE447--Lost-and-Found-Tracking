@@ -5,6 +5,13 @@ from flask_socketio import SocketIO
 from datetime import datetime
 import os
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///lostandfound.db")
 # Fix for some postgres hosting providers requiring sslmode to require
@@ -15,9 +22,20 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev_secret_key")
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, '..', 'static', 'uploads')
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
+# Email Configuration (for 2FA OTP sending)
+app.config["MAIL_SERVER"] = os.environ.get("MAIL_SERVER", "localhost")
+app.config["MAIL_PORT"] = int(os.environ.get("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"] = os.environ.get("MAIL_USE_TLS", "True") == "True"
+app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@lostandfound.com")
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 socketio = SocketIO(app)
+
+# Import all models for Alembic migration detection
+from app import models
 
 # Ensure uploads directory exists
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)

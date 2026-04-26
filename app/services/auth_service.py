@@ -1,6 +1,6 @@
 from flask import session
-from werkzeug.security import check_password_hash
 from app.repositories.user_repository import UserRepository
+from app.services.data_encryption_service import DataEncryptionService
 
 class AuthService:
     def __init__(self):
@@ -14,11 +14,21 @@ class AuthService:
 
     def authenticate(self, email, password):
         user = self.user_repository.get_by_email(email)
-        if not user or not check_password_hash(user.password, password):
+        
+        if not user:
             return None
-        if user.is_banned:
-            raise ValueError("Account is suspended")
-        return user
+        
+        # Verify password using custom PBKDF2
+        if not (user.password_hash and user.password_salt):
+            # No password hash stored (should not happen with new registration)
+            return None
+        
+        if DataEncryptionService.verify_password(password, user.password_salt, user.password_hash):
+            if user.is_banned:
+                raise ValueError("Account is suspended")
+            return user
+        
+        return None
 
     def login_user(self, user):
         session["user_id"] = user.id
