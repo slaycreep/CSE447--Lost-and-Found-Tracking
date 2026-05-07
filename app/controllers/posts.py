@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, session, redirect, url_for, reques
 from app.services.post_service import PostService
 from app.services.search_service import SearchService
 from app.services.verification_service import VerificationService
-from app.utils.decorators import login_required, user_only
+from app.utils.decorators import login_required, user_only, permission_required, any_permission_required
 from app.utils.image_utils import save_image
 from app.services.social_media_service import SocialMediaService
 
@@ -28,7 +28,7 @@ def found_items():
 
 
 @posts_bp.route("/report-lost-item", methods=["GET", "POST"])
-@login_required
+@permission_required('posts_create')
 def report_lost_item():
     if request.method == "POST":
         try:
@@ -43,7 +43,7 @@ def report_lost_item():
 
 
 @posts_bp.route("/report-found-item", methods=["GET", "POST"])
-@login_required
+@permission_required('posts_create')
 def report_found_item():
     if request.method == "POST":
         try:
@@ -100,11 +100,14 @@ def my_found_items():
 
 
 @posts_bp.route("/post/<int:post_id>/edit", methods=["GET", "POST"])
-@login_required
-@user_only
+@any_permission_required('posts_edit', 'posts_edit_any')
 def edit_post(post_id):
     post = post_service.get_by_id(post_id)
-    if session.get("user_id") != post.user_id:
+    
+    # Check if user has permission to edit (either own post or any post)
+    from app.models.user import User
+    user = User.query.get(session.get("user_id"))
+    if session.get("user_id") != post.user_id and not user.has_permission('posts_edit_any'):
         flash("Access denied", "danger")
         return redirect(url_for("posts.view_post", post_id=post.id))
 
@@ -134,11 +137,14 @@ def edit_post(post_id):
 
 
 @posts_bp.route("/post/<int:post_id>/delete", methods=["POST"])
-@login_required
-@user_only
+@any_permission_required('posts_delete', 'posts_delete_any')
 def delete_post(post_id):
     post = post_service.get_by_id(post_id)
-    if session.get("user_id") != post.user_id:
+    
+    # Check if user has permission to delete (either own post or any post)
+    from app.models.user import User
+    user = User.query.get(session.get("user_id"))
+    if session.get("user_id") != post.user_id and not user.has_permission('posts_delete_any'):
         flash("Access denied", "danger")
         return redirect(url_for("posts.view_post", post_id=post.id))
 

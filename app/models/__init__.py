@@ -7,6 +7,7 @@ from app.models.chat import Chat
 from app.models.user_report import UserReport
 from app.models.verificationClaim import VerificationClaim
 from app.models.verification_code import VerificationCode
+from app.models.rbac import Permission, Role
 
 __all__ = [
     'User',
@@ -17,4 +18,6 @@ __all__ = [
     'UserReport',
     'VerificationClaim',
     'VerificationCode',
+    'Permission',
+    'Role',
 ]

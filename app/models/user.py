@@ -1,5 +1,6 @@
 from app import db
 from app.models.user_report import UserReport
+from app.models.rbac import user_roles
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -43,6 +44,12 @@ class User(db.Model):
         backref="reported_user",
         lazy=True,
     )
+    
+    # RBAC: User roles (many-to-many relationship)
+    roles = db.relationship('Role',
+                           secondary=user_roles,
+                           backref=db.backref('users', lazy=True),
+                           lazy=True)
     
     def get_decrypted_data(self, user_keys_model=None):
         """
@@ -95,3 +102,66 @@ class User(db.Model):
             }
         
         return result
+    
+    # RBAC Methods
+    def has_role(self, role_name):
+        """
+        Check if user has a specific role
+        
+        Args:
+            role_name: Name of the role (e.g., 'admin', 'moderator')
+            
+        Returns:
+            True if user has the role, False otherwise
+        """
+        return any(role.name == role_name for role in self.roles)
+    
+    def has_permission(self, permission_codename):
+        """
+        Check if user has a specific permission (through any of their roles)
+        
+        Args:
+            permission_codename: Codename of the permission (e.g., 'posts_delete')
+            
+        Returns:
+            True if user has the permission, False otherwise
+        """
+        # Admin users have all permissions
+        if self.is_admin:
+            return True
+        
+        # Check if any of user's roles have the permission
+        for role in self.roles:
+            if role.has_permission(permission_codename):
+                return True
+        
+        return False
+    
+    def add_role(self, role):
+        """Add a role to this user"""
+        if role not in self.roles:
+            self.roles.append(role)
+    
+    def remove_role(self, role):
+        """Remove a role from this user"""
+        if role in self.roles:
+            self.roles.remove(role)
+    
+    def get_permissions(self):
+        """
+        Get all permissions for this user (from all roles)
+        
+        Returns:
+            Set of permission codenames
+        """
+        if self.is_admin:
+            # Admin has all permissions - return all permission codenames
+            from app.models.rbac import Permission
+            return {perm.codename for perm in Permission.query.all()}
+        
+        permissions = set()
+        for role in self.roles:
+            for permission in role.permissions:
+                permissions.add(permission.codename)
+        
+        return permissions

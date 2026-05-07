@@ -105,3 +105,14 @@ from app.sockets import socket_events
 # Register error handlers
 from app.utils.error_handlers import register_error_handlers
 register_error_handlers(app)
+
+# Initialize RBAC system
+with app.app_context():
+    from app.services.rbac_service import RBACService
+    try:
+        # Initialize RBAC only if not already initialized
+        from app.models.rbac import Permission
+        if Permission.query.count() == 0:
+            RBACService.init_rbac()
+    except:
+        pass  # Skip if database not ready yet
