@@ -16,11 +16,11 @@ migrations/versions/__pycache__
 *.swo
 
 
-.env
-instance/
-.env
-chroma_db/
-embedding_cache
-static/uploads/
-__pycache__/
-*.pyc
+# .env
+# instance/
+# .env
+# chroma_db/
+# embedding_cache
+# static/uploads/
+# __pycache__/
+# *.pyc
