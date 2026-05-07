@@ -53,29 +53,41 @@ class ChatRepository:
         
         # Get receiver's ECC public key for encryption
         try:
+            print(f"[CHAT ENCRYPT] Retrieving keys for receiver {receiver_id}...")
             receiver_keys = KeyManagementService.retrieve_keys(
                 user_id=receiver_id,
                 master_password="default-key-encryption"
             )
             ecc_public_key = receiver_keys['ecc_public']
+            print(f"[CHAT ENCRYPT] ✓ Keys retrieved. ECC public key type: {type(ecc_public_key)}")
+            print(f"[CHAT ENCRYPT] ✓ ECC key has coordinates: x={len(str(ecc_public_key.get('x', '')))}, y={len(str(ecc_public_key.get('y', '')))}")
             
             # Encrypt message using receiver's ECC public key
-            encrypted_data = DataEncryptionService.encrypt_post_data(
+            print(f"[CHAT ENCRYPT] Encrypting message: '{message_text[:50]}...'")
+            ciphertext, hmac_tag = DataEncryptionService.encrypt_post_data(
                 message_text,
                 ecc_public_key
             )
+            print(f"[CHAT ENCRYPT] ✓ Message encrypted successfully")
+            print(f"[CHAT ENCRYPT] ✓ Ciphertext length: {len(ciphertext)}, HMAC length: {len(hmac_tag)}")
             
             # Create chat message with encrypted content
             message = Chat(
                 post_id=post_id,
                 sender_id=sender_id,
                 receiver_id=receiver_id,
-                message_encrypted=encrypted_data['ciphertext'],
-                message_hmac=encrypted_data['hmac_tag']
+                message_encrypted=ciphertext,
+                message_hmac=hmac_tag
             )
+            print(f"[CHAT ENCRYPT] ✓ Chat message created with encryption")
         except Exception as e:
-            # Fallback to plaintext for backward compatibility / key retrieval errors
-            print(f"Warning: Failed to encrypt chat message: {str(e)}")
+            # Log the actual error
+            print(f"[CHAT ENCRYPT] ✗ ENCRYPTION FAILED: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback to plaintext for backward compatibility
+            print(f"[CHAT ENCRYPT] Falling back to plaintext storage")
             message = Chat(
                 post_id=post_id,
                 sender_id=sender_id,
