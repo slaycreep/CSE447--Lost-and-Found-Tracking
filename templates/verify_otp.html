@@ -23,6 +23,7 @@
                     {% endwith %}
                     
                     <form method="POST" action="{{ url_for('auth.verify_otp') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="mb-3">
                             <label for="otp_code" class="form-label">Verification Code:</label>
                             <input 

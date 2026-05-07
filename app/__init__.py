@@ -1,9 +1,10 @@
-from flask import Flask, session, redirect, url_for
+from flask import Flask, session, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
 from datetime import datetime
 import os
+from app.services.session_security_service import SessionSecurityService
 
 # Load environment variables from .env file if it exists
 try:
@@ -29,6 +30,17 @@ app.config["MAIL_USE_TLS"] = os.environ.get("MAIL_USE_TLS", "True") == "True"
 app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@lostandfound.com")
+
+# Secure Session Configuration (Requirement 12)
+# TEMPORARY: Reduced to 10 minutes for testing (normally 30 * 60 = 1800 seconds)
+# Note: SESSION_COOKIE_SECURE only works if accessing via HTTPS
+# For local development over HTTP, we need to disable it
+is_production = os.environ.get("FLASK_ENV") == "production"
+app.config["SESSION_COOKIE_SECURE"] = is_production  # Only HTTPS in production
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF protection
+app.config["PERMANENT_SESSION_LIFETIME"] = 10 * 60  # TEMP: 10 minutes for testing
+app.config["SESSION_REFRESH_EACH_REQUEST"] = False  # Don't refresh on every request
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -72,6 +84,16 @@ def inject_common_data():
         'notifications_count': notifications_count,
         'unread_chats': unread_chats
     }
+
+
+# Session timeout middleware (Requirement 12)
+@app.before_request
+def check_session_timeout():
+    """Check for session timeout on every request"""
+    if 'user_id' in session:
+        if SessionSecurityService.check_session_timeout():
+            flash("Your session has expired. Please login again.", "warning")
+            return redirect(url_for("auth.login"))
 
 
 # Add root route handler

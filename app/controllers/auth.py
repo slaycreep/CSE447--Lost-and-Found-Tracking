@@ -1,6 +1,7 @@
 from flask import Blueprint, request, session, redirect, url_for, flash, render_template
 from app.services.auth_service import AuthService
 from app.services.two_factor_auth_service import TwoFactorAuthService
+from app.services.session_security_service import SessionSecurityService
 from app.utils.decorators import login_required
 
 auth_bp = Blueprint('auth', __name__)
@@ -10,10 +11,25 @@ auth_service = AuthService()
 def login():
     if "user_id" in session:
         return redirect(url_for("dashboard.dashboard"))
-        
+    
     if request.method == "POST":
         try:
+            # Validate CSRF token
+            csrf_from_form = request.form.get("csrf_token")
+            if csrf_from_form and not SessionSecurityService.validate_csrf_token(csrf_from_form):
+                fresh_token = SessionSecurityService.generate_csrf_token()
+                flash("Security validation failed. Please try again.", "danger")
+                return render_template("login.html", csrf_token=fresh_token)
+            
             email = request.form.get("email")
+            
+            # Check if IP is locked out due to too many failed attempts
+            if SessionSecurityService.is_login_locked(email):
+                remaining = SessionSecurityService.get_lockout_time_remaining(email)
+                fresh_token = SessionSecurityService.generate_csrf_token()
+                flash(f"Too many failed attempts. Try again in {remaining} seconds.", "danger")
+                return render_template("login.html", csrf_token=fresh_token)
+            
             password = request.form.get("password")
             
             # Factor 1: Verify email and password
@@ -23,26 +39,49 @@ def login():
             )
             
             if success:
+                # Clear failed login attempts
+                SessionSecurityService.clear_failed_login(email)
+                
+                # ENSURE SESSION PERSISTS
+                session.permanent = True
+                
                 # Store verification code ID in session for next step
                 session["verification_code_id"] = verification_code_id
                 session["temp_user_id"] = user.id
                 session["temp_user_name"] = user.name
+                session.modified = True  # Ensure session is saved
+                
                 flash("Password verified. Please enter the code sent to your email.", "info")
                 return redirect(url_for("auth.verify_otp"))
             else:
-                flash(verification_code_id, "danger")  # verification_code_id contains error message
+                # Track failed login attempt
+                SessionSecurityService.track_failed_login(email)
+                error_msg = verification_code_id if isinstance(verification_code_id, str) else "Invalid email or password"
+                flash(error_msg, "danger")
         except ValueError as e:
             flash(str(e), "danger")
-    return render_template("login.html")
+    
+    # Generate fresh CSRF token for GET or after errors
+    csrf_token = SessionSecurityService.generate_csrf_token()
+    return render_template("login.html", csrf_token=csrf_token)
 
 @auth_bp.route("/verify-otp", methods=["GET", "POST"])
 def verify_otp():
     # Check if user is in the middle of 2FA
     if "verification_code_id" not in session:
+        flash("Session expired. Please login again.", "warning")
         return redirect(url_for("auth.login"))
     
     if request.method == "POST":
         try:
+            # Validate CSRF token
+            csrf_from_form = request.form.get("csrf_token")
+            if csrf_from_form and not SessionSecurityService.validate_csrf_token(csrf_from_form):
+                flash("Security validation failed. Please try again.", "danger")
+                temp_user_name = session.get("temp_user_name", "User")
+                fresh_token = SessionSecurityService.generate_csrf_token()
+                return render_template("verify_otp.html", user_name=temp_user_name, csrf_token=fresh_token)
+            
             verification_code_id = session.get("verification_code_id")
             otp_code = request.form.get("otp_code")
             
@@ -53,15 +92,13 @@ def verify_otp():
             )
             
             if success:
-                # Both factors verified - log user in
+                # Both factors verified - initialize secure session with SessionSecurityService
+                SessionSecurityService.init_session(user.id, user.email, user.name, user.is_admin)
+                
+                # Clean up temporary session data
                 session.pop("verification_code_id", None)
                 session.pop("temp_user_id", None)
                 session.pop("temp_user_name", None)
-                
-                # Set authenticated session
-                session["user_id"] = user.id
-                session["user_name"] = user.name
-                session["is_admin"] = user.is_admin
                 
                 flash(f"Welcome back, {user.name}!", "success")
                 return redirect(url_for("dashboard.dashboard"))
@@ -70,8 +107,10 @@ def verify_otp():
         except ValueError as e:
             flash(str(e), "danger")
     
+    # Generate fresh CSRF token for GET or after errors
+    csrf_token = SessionSecurityService.generate_csrf_token()
     temp_user_name = session.get("temp_user_name", "User")
-    return render_template("verify_otp.html", user_name=temp_user_name)
+    return render_template("verify_otp.html", user_name=temp_user_name, csrf_token=csrf_token)
 
 @auth_bp.route("/request-new-code", methods=["POST"])
 def request_new_code():
@@ -97,9 +136,16 @@ def request_new_code():
 def register():
     if "user_id" in session:
         return redirect(url_for("dashboard.dashboard"))
-        
+    
     if request.method == "POST":
         try:
+            # Validate CSRF token
+            csrf_from_form = request.form.get("csrf_token")
+            if csrf_from_form and not SessionSecurityService.validate_csrf_token(csrf_from_form):
+                fresh_token = SessionSecurityService.generate_csrf_token()
+                flash("Security validation failed. Please try again.", "danger")
+                return render_template("register.html", csrf_token=fresh_token)
+            
             user = auth_service.register(
                 request.form.get("name"),
                 request.form.get("email"),
@@ -110,14 +156,22 @@ def register():
             return redirect(url_for("auth.login"))
         except ValueError as e:
             flash(str(e), "danger")
-    return render_template("register.html")
+    
+    # Generate fresh CSRF token for GET or after errors
+    csrf_token = SessionSecurityService.generate_csrf_token()
+    return render_template("register.html", csrf_token=csrf_token)
 
 @auth_bp.route("/logout")
-@login_required
 def logout():
+    # Get user name before clearing session
     user_name = session.get("user_name", "User")
-    auth_service.logout_user()
+    
+    # Destroy the session FIRST (completely clear it)
+    SessionSecurityService.destroy_session()
+    
+    # Now flash the goodbye message (will be stored in cleared session)
     flash(f"Goodbye, {user_name}! You have been logged out.", "info")
+    
     return redirect(url_for("auth.login"))
 
 @auth_bp.route("/home")
