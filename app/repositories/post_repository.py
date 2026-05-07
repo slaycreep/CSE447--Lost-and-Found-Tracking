@@ -4,6 +4,7 @@ from sqlalchemy import or_, and_
 from datetime import datetime
 from app.services.key_management_service import KeyManagementService
 from app.services.data_encryption_service import DataEncryptionService
+import json
 
 
 class PostRepository:
@@ -49,46 +50,50 @@ class PostRepository:
         """
         user_id = data.get('user_id')
         
-        # Get user's ECC public key for encryption
+        # Get user's keys - use direct database lookup to avoid slow key derivation
         try:
-            keys = KeyManagementService.retrieve_keys(
-                user_id=user_id,
-                master_password="default-key-encryption"
-            )
-            ecc_public_key = keys['ecc_public']
+            from app.models.user_keys import UserKeys
+            user_keys = UserKeys.query.filter_by(user_id=user_id).first()
             
-            # Encrypt sensitive post fields
-            if data.get('description'):
-                desc_enc, desc_hmac = DataEncryptionService.encrypt_post_data(
-                    data['description'], ecc_public_key
-                )
-                data['description_encrypted'] = desc_enc
-                data['description_hmac'] = desc_hmac
-            
-            if data.get('item_name'):
-                item_enc, item_hmac = DataEncryptionService.encrypt_post_data(
-                    data['item_name'], ecc_public_key
-                )
-                data['item_name_encrypted'] = item_enc
-                data['item_name_hmac'] = item_hmac
-            
-            if data.get('location'):
-                loc_enc, loc_hmac = DataEncryptionService.encrypt_post_data(
-                    data['location'], ecc_public_key
-                )
-                data['location_encrypted'] = loc_enc
-                data['location_hmac'] = loc_hmac
-            
-            if data.get('contact_method'):
-                contact_enc, contact_hmac = DataEncryptionService.encrypt_post_data(
-                    data['contact_method'], ecc_public_key
-                )
-                data['contact_method_encrypted'] = contact_enc
-                data['contact_method_hmac'] = contact_hmac
+            if user_keys:
+                # Try to parse stored keys (new format is plaintext JSON)
+                try:
+                    ecc_public = json.loads(user_keys.ecc_public_key)
+                    
+                    # Encrypt sensitive post fields
+                    if data.get('description'):
+                        desc_enc, desc_hmac = DataEncryptionService.encrypt_post_data(
+                            data['description'], ecc_public
+                        )
+                        data['description_encrypted'] = desc_enc
+                        data['description_hmac'] = desc_hmac
+                    
+                    if data.get('item_name'):
+                        item_enc, item_hmac = DataEncryptionService.encrypt_post_data(
+                            data['item_name'], ecc_public
+                        )
+                        data['item_name_encrypted'] = item_enc
+                        data['item_name_hmac'] = item_hmac
+                    
+                    if data.get('location'):
+                        loc_enc, loc_hmac = DataEncryptionService.encrypt_post_data(
+                            data['location'], ecc_public
+                        )
+                        data['location_encrypted'] = loc_enc
+                        data['location_hmac'] = loc_hmac
+                    
+                    if data.get('contact_method'):
+                        contact_enc, contact_hmac = DataEncryptionService.encrypt_post_data(
+                            data['contact_method'], ecc_public
+                        )
+                        data['contact_method_encrypted'] = contact_enc
+                        data['contact_method_hmac'] = contact_hmac
+                
+                except Exception as e:
+                    print(f"⚠️  Encryption failed: {str(e)[:60]}")
         
         except Exception as e:
-            # If encryption fails, store as plaintext (fallback)
-            pass
+            print(f"⚠️  Could not get user keys: {str(e)[:60]}")
         
         post = Post(**data)
         db.session.add(post)

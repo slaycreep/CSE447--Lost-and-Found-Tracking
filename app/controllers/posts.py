@@ -113,21 +113,8 @@ def edit_post(post_id):
 
     if request.method == "POST":
         try:
-            post.description = request.form.get("description")
-            post.category_name = request.form.get("category")
-            post.location = request.form.get("location")
-
-            if "images" in request.files:
-                images = []
-                for file in request.files.getlist("images"):
-                    if file.filename:
-                        filename = save_image(file)
-                        if filename:
-                            images.append(filename)
-                if images:
-                    post.images = ",".join(images)
-
-            post_service.update(post)
+            # Pass form_data and files to post_service.update() for automatic encryption
+            post_service.update(post, request.form, request.files)
             flash("Post updated successfully", "success")
             return redirect(url_for("posts.view_post", post_id=post.id))
         except Exception as e:

@@ -100,7 +100,7 @@ class PostService:
                     )
                     ecc_public_key = keys['ecc_public']
                     
-                    # Encrypt and update fields
+                    # Encrypt and update all sensitive fields
                     if form_data.get('description'):
                         post.description = form_data.get('description', post.description)
                         desc_enc, desc_hmac = DataEncryptionService.encrypt_post_data(
@@ -108,6 +108,14 @@ class PostService:
                         )
                         post.description_encrypted = desc_enc
                         post.description_hmac = desc_hmac
+                    
+                    if form_data.get('item_name'):
+                        post.item_name = form_data.get('item_name', post.item_name)
+                        item_enc, item_hmac = DataEncryptionService.encrypt_post_data(
+                            post.item_name, ecc_public_key
+                        )
+                        post.item_name_encrypted = item_enc
+                        post.item_name_hmac = item_hmac
                     
                     if form_data.get('location'):
                         post.location = form_data.get('location', post.location)
@@ -117,13 +125,23 @@ class PostService:
                         post.location_encrypted = loc_enc
                         post.location_hmac = loc_hmac
                     
+                    if form_data.get('contact_method'):
+                        post.contact_method = form_data.get('contact_method', post.contact_method)
+                        contact_enc, contact_hmac = DataEncryptionService.encrypt_post_data(
+                            post.contact_method, ecc_public_key
+                        )
+                        post.contact_method_encrypted = contact_enc
+                        post.contact_method_hmac = contact_hmac
+                    
                     post.category_name = form_data.get('category', post.category_name)
                 
                 except Exception as e:
                     # Fallback to unencrypted update if encryption fails
                     post.description = form_data.get('description', post.description)
+                    post.item_name = form_data.get('item_name', post.item_name)
                     post.category_name = form_data.get('category', post.category_name)
                     post.location = form_data.get('location', post.location)
+                    post.contact_method = form_data.get('contact_method', post.contact_method)
 
             if files and 'images' in files:
                 new_images = save_images(files)
@@ -134,6 +152,7 @@ class PostService:
         except Exception as e:
             print(f"Error updating post: {str(e)}")
             raise
+
 
     def delete(self, post):
         try:

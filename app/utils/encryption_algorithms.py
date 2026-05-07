@@ -424,6 +424,70 @@ class RSAEncryption:
         return public_key, private_key
     
     @staticmethod
+    def generate_key_pair_from_seed(seed_bytes):
+        """
+        Generate RSA 2048-bit key pair deterministically from a seed.
+        COMPLIANCE: Used for asymmetric key encryption (CSE447 requirement).
+        
+        Args:
+            seed_bytes: Deterministic seed (bytes) - typically from PBKDF2
+        
+        Returns:
+            (public_key_dict, private_key_dict)
+        """
+        # Seed the random generator deterministically
+        import hashlib
+        
+        # Convert seed to deterministic state for prime generation
+        # Use hash-based approach to generate two candidate primes from the seed
+        seed_int = int.from_bytes(seed_bytes, 'big')
+        
+        # Generate first candidate prime using seed  
+        p_seed_bytes = hashlib.sha256(seed_bytes + b'_p_').digest()
+        p_candidate = int.from_bytes(p_seed_bytes, 'big')
+        p_candidate |= (1 << (RSAEncryption.KEY_SIZE_BITS // 2 - 1)) | 1  # Ensure odd, correct bit length
+        
+        # Find next prime >= p_candidate (deterministic based on seed)
+        p = p_candidate
+        attempts = 0
+        while not RSAEncryption.is_prime(p) and attempts < 10000:
+            p += 2
+            attempts += 1
+        
+        if not RSAEncryption.is_prime(p):
+            raise ValueError("Failed to generate prime p from seed")
+        
+        # Generate second candidate prime using seed
+        q_seed_bytes = hashlib.sha256(seed_bytes + b'_q_').digest()
+        q_candidate = int.from_bytes(q_seed_bytes, 'big')
+        q_candidate |= (1 << (RSAEncryption.KEY_SIZE_BITS // 2 - 1)) | 1  # Ensure odd, correct bit length
+        
+        # Ensure q != p
+        q = q_candidate
+        attempts = 0
+        while (not RSAEncryption.is_prime(q) or q == p) and attempts < 10000:
+            q += 2
+            attempts += 1
+        
+        if not RSAEncryption.is_prime(q) or q == p:
+            raise ValueError("Failed to generate prime q from seed")
+        
+        # Compute RSA parameters
+        n = p * q
+        phi = (p - 1) * (q - 1)
+        
+        e = RSAEncryption.PUBLIC_EXPONENT
+        while RSAEncryption.gcd(e, phi) != 1:
+            e += 2
+        
+        d = RSAEncryption.mod_inverse(e, phi)
+        
+        public_key = {"n": n, "e": e}
+        private_key = {"n": n, "e": e, "d": d, "p": p, "q": q}
+        
+        return public_key, private_key
+    
+    @staticmethod
     def oaep_pad(message, key_size_bytes, label=b""):
         """OAEP Padding scheme"""
         if isinstance(message, str):
