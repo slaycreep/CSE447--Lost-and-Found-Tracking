@@ -1,6 +1,7 @@
 from app.models.user import User
 from app.models.user_keys import UserKeys
 from app.services.data_encryption_service import DataEncryptionService
+from app.services.key_management_service import KeyManagementService
 from app.utils.encryption_algorithms import RSAEncryption, ECCEncryption
 from app import db
 from sqlalchemy import func
@@ -18,10 +19,10 @@ class UserRepository:
     def create(name, email, password, contact_info):
         """
         Create user with encrypted data and generated keypairs
+        Uses KeyManagementService to securely store encrypted private keys
         """
-        # Generate RSA and ECC keypairs
-        rsa_public, rsa_private = RSAEncryption.generate_key_pair()
-        ecc_public, ecc_private = ECCEncryption.generate_key_pair()
+        # Generate RSA and ECC keypairs using KeyManagementService
+        rsa_public, rsa_private, ecc_public, ecc_private = KeyManagementService.generate_keypairs()
         
         # Encrypt user data using RSA
         name_encrypted, name_hmac = DataEncryptionService.encrypt_user_data(
@@ -54,11 +55,15 @@ class UserRepository:
         db.session.add(user)
         db.session.flush()  # Get user.id
         
-        # Create UserKeys record
-        user_keys = UserKeys(user_id=user.id)
-        user_keys.set_rsa_keys(rsa_public, rsa_private)
-        user_keys.set_ecc_keys(ecc_public, ecc_private)
-        db.session.add(user_keys)
+        # Create UserKeys record with encrypted private keys
+        KeyManagementService.store_keys(
+            user_id=user.id,
+            rsa_public=rsa_public,
+            rsa_private=rsa_private,
+            ecc_public=ecc_public,
+            ecc_private=ecc_private,
+            master_password="default-key-encryption"  # In production, use environment variable
+        )
         
         db.session.commit()
         return user

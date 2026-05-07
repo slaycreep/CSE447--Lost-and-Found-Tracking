@@ -44,46 +44,54 @@ class User(db.Model):
         lazy=True,
     )
     
-    def get_decrypted_data(self, user_keys_model):
+    def get_decrypted_data(self, user_keys_model=None):
         """
-        Decrypt user data using their keypairs
+        Decrypt user data using their keypairs from KeyManagementService
         Returns dict with decrypted username, email, contact_info
         """
+        from app.services.key_management_service import KeyManagementService
         from app.services.data_encryption_service import DataEncryptionService
         
-        if not user_keys_model:
-            # Fallback to plaintext if no keys exist (shouldn't happen)
-            return {
+        result = {}
+        
+        try:
+            # Retrieve keys using KeyManagementService (handles decryption automatically)
+            keys = KeyManagementService.retrieve_keys(
+                user_id=self.id,
+                master_password="default-key-encryption"
+            )
+            rsa_private_key = keys['rsa_private']
+            
+            # Decrypt username
+            if self.name_encrypted:
+                result['name'] = DataEncryptionService.decrypt_user_data(
+                    self.name_encrypted, self.name_hmac, rsa_private_key
+                )
+            else:
+                result['name'] = self.name
+            
+            # Decrypt email
+            if self.email_encrypted:
+                result['email'] = DataEncryptionService.decrypt_user_data(
+                    self.email_encrypted, self.email_hmac, rsa_private_key
+                )
+            else:
+                result['email'] = self.email
+            
+            # Decrypt contact info
+            if self.contact_info_encrypted:
+                result['contact_info'] = DataEncryptionService.decrypt_user_data(
+                    self.contact_info_encrypted, self.contact_info_hmac, rsa_private_key
+                )
+            else:
+                result['contact_info'] = ""
+        
+        except Exception as e:
+            # Fallback to plaintext if key retrieval fails
+            result = {
                 "name": self.name,
                 "email": self.email,
                 "contact_info": getattr(self, 'contact_info_encrypted', None) or ""
             }
-        
-        result = {}
-        rsa_private_key = user_keys_model.get_rsa_private_key()
-        
-        # Decrypt username
-        if self.name_encrypted:
-            result['name'] = DataEncryptionService.decrypt_user_data(
-                self.name_encrypted, self.name_hmac, rsa_private_key
-            )
-        else:
-            result['name'] = self.name
-        
-        # Decrypt email
-        if self.email_encrypted:
-            result['email'] = DataEncryptionService.decrypt_user_data(
-                self.email_encrypted, self.email_hmac, rsa_private_key
-            )
-        else:
-            result['email'] = self.email
-        
-        # Decrypt contact info
-        if self.contact_info_encrypted:
-            result['contact_info'] = DataEncryptionService.decrypt_user_data(
-                self.contact_info_encrypted, self.contact_info_hmac, rsa_private_key
-            )
-        else:
-            result['contact_info'] = ""
         
         return result
