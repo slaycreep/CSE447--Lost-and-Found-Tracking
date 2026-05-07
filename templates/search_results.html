@@ -102,10 +102,10 @@
                                 <p class="card-text">
                                     <small class="text-muted">
                                         <i class="fas fa-map-marker-alt"></i> {{ post.location }}<br>
-                                        <i class="fas fa-calendar"></i> Posted: {{ post.post_date.strftime('%Y-%m-%d') }}<br>
+                                        <i class="fas fa-calendar"></i> Posted: {{ post.post_date.strftime('%Y-%m-%d') if post.post_date else 'N/A' }}<br>
                                         <i class="fas fa-clock"></i> 
                                         {% if post.type == 'lost' %}Lost{% else %}Found{% endif %} on: 
-                                        {{ post.lOrF_date.strftime('%Y-%m-%d') }}
+                                        {{ post.lOrF_date.strftime('%Y-%m-%d') if post.lOrF_date else 'N/A' }}
                                     </small>
                                 </p>
                                 <a href="{{ url_for('posts.view_post', post_id=post.id) }}" 

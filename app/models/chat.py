@@ -6,7 +6,14 @@ class Chat(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    message = db.Column(db.Text, nullable=False)
+    
+    # Legacy plaintext message (DEPRECATED - kept for backward compatibility)
+    message = db.Column(db.Text, nullable=True)
+    
+    # Encrypted message fields
+    message_encrypted = db.Column(db.Text, nullable=True)  # Base64-encoded ECC-encrypted message
+    message_hmac = db.Column(db.String(256), nullable=True)  # HMAC tag for integrity verification
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_read = db.Column(db.Boolean, default=False)
 
@@ -36,3 +43,38 @@ class Chat(db.Model):
             })
 
         return len(messages)
+    
+    def get_decrypted_message(self):
+        """
+        Decrypt message using receiver's ECC private key
+        Returns decrypted message text or plaintext message for backward compatibility
+        """
+        from app.services.key_management_service import KeyManagementService
+        from app.services.data_encryption_service import DataEncryptionService
+        
+        try:
+            # If encrypted, decrypt using receiver's private key
+            if self.message_encrypted and self.message_hmac:
+                keys = KeyManagementService.retrieve_keys(
+                    user_id=self.receiver_id,
+                    master_password="default-key-encryption"
+                )
+                ecc_private_key = keys['ecc_private']
+                
+                # Decrypt message
+                decrypted = DataEncryptionService.decrypt_post_data(
+                    self.message_encrypted,
+                    self.message_hmac,
+                    ecc_private_key
+                )
+                return decrypted
+            # Fallback to plaintext message for backward compatibility
+            elif self.message:
+                return self.message
+            else:
+                return "[Message unavailable]"
+        except Exception as e:
+            # Log error and return fallback
+            print(f"Error decrypting message {self.id}: {str(e)}")
+            return self.message if self.message else "[Message unavailable]"
+

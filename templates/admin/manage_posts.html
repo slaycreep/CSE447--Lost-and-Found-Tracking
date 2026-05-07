@@ -93,7 +93,7 @@
                                 </span>
                             </td>
                             <td>{{ post.user.name }}</td>
-                            <td>{{ post.post_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ post.post_date.strftime('%Y-%m-%d') if post.post_date else 'N/A' }}</td>
                             <td>
                                 <div class="btn-group">
                                     <a href="{{ url_for('posts.view_post', post_id=post.id) }}"

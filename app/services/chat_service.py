@@ -9,7 +9,12 @@ class ChatService:
         self.post_repository = PostRepository()
 
     def get_post_chats(self, post_id, user_id):
-        return self.chat_repository.get_post_chats(post_id, user_id)
+        """Get chats for a post with decrypted messages"""
+        chats = self.chat_repository.get_post_chats(post_id, user_id)
+        
+        # Return chats with decryption support
+        # Note: decryption is done on-demand in the template or via get_decrypted_message()
+        return chats
 
     def get_inbox_items(self, user_id):
         posts = self.chat_repository.get_posts_with_chats(user_id)
@@ -73,7 +78,7 @@ class ChatService:
         return {
             'id': message.id,
             'sender_id': message.sender_id,
-            'message': message.message,
+            'message': message_text,  # Return plaintext since we just created it
             'created_at': message.created_at.strftime('%H:%M')
         }
 

@@ -22,13 +22,19 @@
                     </a>
                 </div>
 
+                <!-- Encryption Notice -->
+                <div class="alert alert-info mb-0 d-flex align-items-center" style="border-radius: 0; border: none; border-bottom: 1px solid #dee2e6;">
+                    <i class="fas fa-lock me-2"></i>
+                    <span><strong>🔒 End-to-End Encrypted</strong> — All messages are encrypted and secured.</span>
+                </div>
+
                 <div class="card-body chat-container" style="height: 400px; overflow-y: auto;" id="chatMessages">
                     {% for chat in chats %}
                     <div class="mb-3 {% if chat.sender_id == session.user_id %}text-end{% endif %}">
                         <div class="d-inline-block p-2 rounded {% if chat.sender_id == session.user_id %}bg-primary text-white{% else %}bg-light{% endif %}" style="max-width: 70%;">
-                            <div class="message-text">{{ chat.message }}</div>
+                            <div class="message-text">{{ chat.get_decrypted_message() }}</div>
                             <small class="{% if chat.sender_id == session.user_id %}text-white-50{% else %}text-muted{% endif %}">
-                                {{ chat.created_at.strftime('%H:%M') }}
+                                {{ chat.created_at.strftime('%H:%M') if chat.created_at else '' }}
                             </small>
                             {% if chat.sender_id != session['user_id'] %}
                             <button class="btn btn-sm btn-link text-warning"

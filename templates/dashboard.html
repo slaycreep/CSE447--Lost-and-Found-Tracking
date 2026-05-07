@@ -150,10 +150,10 @@
                                         <small class="text-muted">
                                             <i class="fas fa-map-marker-alt"></i> {{ activity.location }}<br>
                                             <i class="fas fa-calendar"></i> Posted: {{
-                                            activity.post_date.strftime('%Y-%m-%d') }}<br>
+                                            activity.post_date.strftime('%Y-%m-%d') if activity.post_date else 'N/A' }}<br>
                                             <i class="fas fa-clock"></i>
                                             {% if activity.type == 'lost' %}Lost{% else %}Found{% endif %} on:
-                                            {{ activity.lOrF_date.strftime('%Y-%m-%d') }}
+                                            {{ activity.lOrF_date.strftime('%Y-%m-%d') if activity.lOrF_date else 'N/A' }}
                                         </small>
                                     </p>
                                     <a href="{{ url_for('posts.view_post', post_id=activity.id) }}"

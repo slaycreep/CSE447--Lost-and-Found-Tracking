@@ -61,11 +61,11 @@
                         </div>
                         <div class="col-md-4">
                             <h5 class="border-bottom pb-2">Posted On</h5>
-                            <p class="text-muted"><i class="fas fa-calendar text-primary"></i> {{ post.post_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            <p class="text-muted"><i class="fas fa-calendar text-primary"></i> {{ post.post_date.strftime('%Y-%m-%d %H:%M:%S') if post.post_date else 'N/A' }}</p>
                         </div>
                         <div class="col-md-4">
                             <h5 class="border-bottom pb-2">{% if post.type == 'lost' %}Lost{% else %}Found{% endif %} On</h5>
-                            <p class="text-muted"><i class="fas fa-clock text-info"></i> {{ post.lOrF_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            <p class="text-muted"><i class="fas fa-clock text-info"></i> {{ post.lOrF_date.strftime('%Y-%m-%d %H:%M:%S') if post.lOrF_date else 'N/A' }}</p>
                         </div>
                     </div>
 
