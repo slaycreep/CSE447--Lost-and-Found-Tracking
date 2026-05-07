@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            {% if is_viewing %}
+            <!-- VIEW MODE -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">My Profile</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="form-label text-muted">Name</label>
+                        <p class="h5">{{ profile_data.name }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-muted">Email</label>
+                        <p class="h5">{{ profile_data.email }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-muted">Contact Information</label>
+                        <p class="h5">{{ profile_data.contact_info or "Not provided" }}</p>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4">
+                        <strong>🔒 Security Notice:</strong> All your profile data is encrypted with custom RSA encryption from scratch and stored securely in the database. Even if the database is compromised, your information remains protected.
+                    </div>
+                    
+                    <a href="{{ url_for('dashboard.edit_profile') }}" class="btn btn-primary">
+                        ✏️ Edit Profile
+                    </a>
+                    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-secondary">
+                        ← Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            {% else %}
+            <!-- EDIT MODE -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Edit Profile</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="name" 
+                                name="name" 
+                                value="{{ profile_data.name or '' }}"
+                                placeholder="Enter your name"
+                            >
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                id="email" 
+                                name="email" 
+                                value="{{ profile_data.email or '' }}"
+                                placeholder="Enter your email"
+                            >
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="contact_info" class="form-label">Contact Information</label>
+                            <textarea 
+                                class="form-control" 
+                                id="contact_info" 
+                                name="contact_info" 
+                                rows="3"
+                                placeholder="Enter your contact information (phone, alternate email, etc.)"
+                            >{{ profile_data.contact_info or '' }}</textarea>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>🔐 Encryption in Progress:</strong> Your profile information will be encrypted using custom RSA (2048-bit) encryption before storage. Each field is encrypted separately and verified with HMAC tags for data integrity.
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                💾 Save Changes (Encrypted)
+                            </button>
+                            <a href="{{ url_for('dashboard.view_profile') }}" class="btn btn-secondary btn-lg">
+                                ✕ Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: none;
+    }
+    
+    .card-header {
+        padding: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+    }
+    
+    .alert {
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .btn {
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}

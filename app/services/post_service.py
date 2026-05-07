@@ -88,10 +88,42 @@ class PostService:
 
     def update(self, post, form_data=None, files=None):
         try:
+            from app.services.key_management_service import KeyManagementService
+            from app.services.data_encryption_service import DataEncryptionService
+            
             if form_data:
-                post.description = form_data.get('description', post.description)
-                post.category_name = form_data.get('category', post.category_name)
-                post.location = form_data.get('location', post.location)
+                # Get user's ECC public key for encryption
+                try:
+                    keys = KeyManagementService.retrieve_keys(
+                        user_id=post.user_id,
+                        master_password="default-key-encryption"
+                    )
+                    ecc_public_key = keys['ecc_public']
+                    
+                    # Encrypt and update fields
+                    if form_data.get('description'):
+                        post.description = form_data.get('description', post.description)
+                        desc_enc, desc_hmac = DataEncryptionService.encrypt_post_data(
+                            post.description, ecc_public_key
+                        )
+                        post.description_encrypted = desc_enc
+                        post.description_hmac = desc_hmac
+                    
+                    if form_data.get('location'):
+                        post.location = form_data.get('location', post.location)
+                        loc_enc, loc_hmac = DataEncryptionService.encrypt_post_data(
+                            post.location, ecc_public_key
+                        )
+                        post.location_encrypted = loc_enc
+                        post.location_hmac = loc_hmac
+                    
+                    post.category_name = form_data.get('category', post.category_name)
+                
+                except Exception as e:
+                    # Fallback to unencrypted update if encryption fails
+                    post.description = form_data.get('description', post.description)
+                    post.category_name = form_data.get('category', post.category_name)
+                    post.location = form_data.get('location', post.location)
 
             if files and 'images' in files:
                 new_images = save_images(files)

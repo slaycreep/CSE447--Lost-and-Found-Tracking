@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>🔐 Encryption Test - Requirement 6</h1>
+    <p class="text-muted">This page shows how post data is encrypted in the database</p>
+
+    <div class="alert alert-info">
+        <strong>How it works:</strong>
+        <ul>
+            <li>All post data is encrypted using custom ECC (P-256) before storage</li>
+            <li>HMAC-SHA256 tags verify data integrity</li>
+            <li>Data is automatically decrypted when retrieved</li>
+        </ul>
+    </div>
+
+    {% if posts %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Post ID</th>
+                        <th>Plaintext Item Name</th>
+                        <th>Encrypted in DB (preview)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for post in posts %}
+                    <tr>
+                        <td><code>{{ post.id }}</code></td>
+                        <td>
+                            <strong>{{ post._decrypted_item_name or post.item_name }}</strong>
+                        </td>
+                        <td>
+                            {% if post.item_name_encrypted %}
+                                <code class="text-truncate d-block" style="max-width: 300px;">
+                                    {{ post.item_name_encrypted[:80] }}...
+                                </code>
+                            {% else %}
+                                <span class="badge bg-danger">NOT ENCRYPTED</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if post.item_name_encrypted %}
+                                <span class="badge bg-success">✓ ENCRYPTED</span>
+                            {% else %}
+                                <span class="badge bg-danger">✗ PLAINTEXT</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-success mt-4">
+            <strong>✅ Post Encryption Working!</strong>
+            <p>All {{ posts|length }} post(s) have encrypted data stored in the database.</p>
+        </div>
+
+        <h3 class="mt-5">Detailed View</h3>
+        {% for post in posts %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Post #{{ post.id }}: {{ post._decrypted_item_name or post.item_name }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>📝 Plaintext (What user sees):</h6>
+                        <ul>
+                            <li><strong>Item Name:</strong> {{ post._decrypted_item_name or post.item_name }}</li>
+                            <li><strong>Description:</strong> {{ post._decrypted_description or post.description }}</li>
+                            <li><strong>Location:</strong> {{ post._decrypted_location or post.location }}</li>
+                            <li><strong>Contact:</strong> {{ post._decrypted_contact_method or post.contact_method }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>🔐 Encrypted (What's in database):</h6>
+                        <ul>
+                            <li><strong>item_name_encrypted:</strong>
+                                {% if post.item_name_encrypted %}
+                                    <code class="d-block text-truncate">{{ post.item_name_encrypted[:100] }}...</code>
+                                {% endif %}
+                            </li>
+                            <li><strong>HMAC tag:</strong>
+                                {% if post.item_name_hmac %}
+                                    <code>{{ post.item_name_hmac[:50] }}...</code>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <strong>Encryption Details:</strong>
+                    <ul>
+                        <li>Algorithm: ECC (P-256) - Custom Implementation</li>
+                        <li>Integrity: HMAC-SHA256</li>
+                        <li>Encrypted fields: 4 (item_name, description, location, contact_method)</li>
+                        <li>HMAC tags: 4 (one per field)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    {% else %}
+        <div class="alert alert-warning">
+            <strong>No posts found.</strong> Create a post first to see encryption in action!
+            <a href="{{ url_for('posts.report_found_item') }}" class="btn btn-primary btn-sm">Create Post</a>
+        </div>
+    {% endif %}
+
+    <div class="mt-5 p-3 bg-light rounded">
+        <h5>🧪 How to test:</h5>
+        <ol>
+            <li>Create a post (go to "Report Found Item" or "Report Lost Item")</li>
+            <li>View the post on this page</li>
+            <li>See plaintext on the left, encrypted data on the right</li>
+            <li>Check database: <code>sqlite3 instance/lostandfound.db</code></li>
+            <li>Run query: <code>SELECT item_name, item_name_encrypted FROM post;</code></li>
+        </ol>
+    </div>
+
+    <hr>
+    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<style>
+code {
+    background: #f4f4f4;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}

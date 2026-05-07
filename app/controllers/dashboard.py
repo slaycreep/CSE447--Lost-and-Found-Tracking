@@ -49,6 +49,56 @@ def clear_notifications():
     notification_service.clear_all_notifications(session['user_id'])
     return redirect(request.referrer or url_for('dashboard.dashboard'))
 
+@dashboard_bp.route("/profile")
+@login_required
+def view_profile():
+    """View user profile with decrypted data"""
+    try:
+        profile_data = user_service.get_profile_decrypted(session['user_id'])
+        user = user_service.get_by_id(session['user_id'])
+        return render_template(
+            'profile.html',
+            user=user,
+            profile_data=profile_data,
+            is_viewing=True
+        )
+    except Exception as e:
+        flash(f"Error loading profile: {str(e)}", "danger")
+        return redirect(url_for('dashboard.dashboard'))
+
+@dashboard_bp.route("/profile/edit", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    """Edit user profile with automatic encryption"""
+    if request.method == "POST":
+        try:
+            update_data = {
+                'name': request.form.get('name'),
+                'email': request.form.get('email'),
+                'contact_info': request.form.get('contact_info')
+            }
+            # Remove empty values
+            update_data = {k: v for k, v in update_data.items() if v}
+            
+            user_service.update_profile(session['user_id'], update_data)
+            flash("Profile updated successfully! Data is encrypted and protected.", "success")
+            return redirect(url_for('dashboard.view_profile'))
+        except Exception as e:
+            flash(f"Error updating profile: {str(e)}", "danger")
+    
+    try:
+        profile_data = user_service.get_profile_decrypted(session['user_id'])
+        user = user_service.get_by_id(session['user_id'])
+        return render_template(
+            'profile.html',
+            user=user,
+            profile_data=profile_data,
+            is_viewing=False
+        )
+    except Exception as e:
+        flash(f"Error loading profile: {str(e)}", "danger")
+        return redirect(url_for('dashboard.dashboard'))
+
 @dashboard_bp.route("/notifications")
 @login_required
 def notifications():

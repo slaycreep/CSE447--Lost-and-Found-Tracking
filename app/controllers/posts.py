@@ -201,3 +201,11 @@ def share_post(post_id, platform):
 
     flash("Invalid sharing platform selected", "danger")
     return redirect(url_for("posts.view_post", post_id=post_id))
+
+
+@posts_bp.route("/debug/encryption-test")
+@login_required
+def encryption_test():
+    """DEBUG ENDPOINT: Show encrypted vs decrypted post data (Requirement 6)"""
+    posts = post_service.get_by_user_id(session['user_id'])
+    return render_template("debug_encryption.html", posts=posts)
