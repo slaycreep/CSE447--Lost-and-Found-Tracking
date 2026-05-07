@@ -48,10 +48,11 @@ class KeyManagementService:
     @staticmethod
     def _derive_key_encryption_keypair(master_password):
         """
-        Derive an RSA keypair from master password using PBKDF2 + deterministic RSA generation.
+        Derive an ECC keypair from master password using PBKDF2 + deterministic ECC generation.
         This keypair is used to encrypt/decrypt user private keys asymmetrically.
         
-        Uses ASYMMETRIC encryption (RSA) as required by CSE447.
+        Uses ASYMMETRIC encryption (ECC) as required by CSE447.
+        ECC is used instead of RSA to avoid OAEP padding size limitations (190-byte limit).
         
         OPTIMIZATION: Caches derived keypairs for 5 minutes to avoid expensive PBKDF2 recomputation.
         
@@ -59,7 +60,7 @@ class KeyManagementService:
             master_password: Master password for key derivation (from environment or config)
         
         Returns:
-            (kek_public_key, kek_private_key) - RSA keypair for key encryption
+            (kek_public_key, kek_private_key) - ECC keypair for key encryption
         """
         # Check cache first
         now = datetime.now()
@@ -78,10 +79,10 @@ class KeyManagementService:
             dklen=64
         )
         
-        # Use deterministic RSA key generation from the seed
-        rsa_public, rsa_private = RSAEncryption.generate_key_pair_from_seed(seed_bytes)
+        # Use deterministic ECC key generation from the seed
+        ecc_public, ecc_private = ECCEncryption.generate_key_pair_from_seed(seed_bytes)
         
-        keypair = (rsa_public, rsa_private)
+        keypair = (ecc_public, ecc_private)
         
         # Cache for future use
         KeyManagementService._key_derivation_cache[master_password] = {
@@ -94,17 +95,18 @@ class KeyManagementService:
     @staticmethod
     def _encrypt_private_key(private_key_dict, master_password):
         """
-        Encrypt a private key dictionary using RSA (ASYMMETRIC encryption).
+        Encrypt a private key dictionary using ECC (ASYMMETRIC encryption).
         
-        COMPLIANCE: Uses RSA asymmetric encryption as required by CSE447.
+        COMPLIANCE: Uses ECC asymmetric encryption as required by CSE447.
         All key storage uses only asymmetric encryption algorithms (RSA and ECC).
+        ECC is used instead of RSA to handle keys of any size (no OAEP padding limit).
         
         Args:
             private_key_dict: Private key as dictionary (RSA or ECC)
             master_password: Master password for deriving key encryption keypair
         
         Returns:
-            Encrypted data as base64 string (RSA ciphertext)
+            Encrypted data as base64 string (ECC ciphertext)
         """
         # Derive the key encryption keypair from master password
         kek_public, _ = KeyManagementService._derive_key_encryption_keypair(master_password)
@@ -112,8 +114,8 @@ class KeyManagementService:
         # Convert private key dict to JSON
         json_data = json.dumps(private_key_dict).encode('utf-8')
         
-        # Encrypt using RSA asymmetric encryption
-        encrypted_ciphertext = RSAEncryption.encrypt(json_data, kek_public)
+        # Encrypt using ECC asymmetric encryption
+        encrypted_ciphertext = ECCEncryption.encrypt(json_data, kek_public)
         
         # Return as base64 for storage
         return encrypted_ciphertext
@@ -122,13 +124,13 @@ class KeyManagementService:
     def _decrypt_private_key(encrypted_data_b64, master_password):
         """
         Decrypt a private key that was encrypted with _encrypt_private_key.
-        Uses RSA (ASYMMETRIC decryption).
+        Uses ECC (ASYMMETRIC decryption).
         
-        COMPLIANCE: Uses RSA asymmetric decryption as required by CSE447.
+        COMPLIANCE: Uses ECC asymmetric decryption as required by CSE447.
         All key storage uses only asymmetric encryption algorithms (RSA and ECC).
         
         Args:
-            encrypted_data_b64: Encrypted data as RSA ciphertext (base64 string)
+            encrypted_data_b64: Encrypted data as ECC ciphertext (base64 string)
             master_password: Master password for deriving key encryption keypair
         
         Returns:
@@ -137,8 +139,8 @@ class KeyManagementService:
         # Derive the key encryption keypair from master password
         _, kek_private = KeyManagementService._derive_key_encryption_keypair(master_password)
         
-        # Decrypt using RSA asymmetric decryption
-        decrypted_json = RSAEncryption.decrypt(encrypted_data_b64, kek_private)
+        # Decrypt using ECC asymmetric decryption
+        decrypted_json = ECCEncryption.decrypt(encrypted_data_b64, kek_private)
         
         # Parse JSON back to dict
         return json.loads(decrypted_json.decode('utf-8') if isinstance(decrypted_json, bytes) else decrypted_json)
@@ -147,9 +149,10 @@ class KeyManagementService:
     def store_keys(user_id, rsa_public, rsa_private, ecc_public, ecc_private, master_password="default-key-encryption"):
         """
         Store user's keypairs securely in database
-        Private keys are encrypted using RSA (asymmetric encryption) before storage
+        Private keys are encrypted using ECC (asymmetric encryption) before storage
         
-        COMPLIANCE: Encrypts private keys using RSA (asymmetric) as required by CSE447.
+        COMPLIANCE: Encrypts private keys using ECC (asymmetric) as required by CSE447.
+        ECC is used instead of RSA to handle keys of any size (no OAEP padding limit).
         
         Args:
             user_id: User's database ID

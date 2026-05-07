@@ -248,6 +248,37 @@ class ECCEncryption:
         return public_key, private_key
     
     @staticmethod
+    def generate_key_pair_from_seed(seed_bytes):
+        """
+        Generate deterministic ECC P-256 keypair from seed bytes.
+        Used for deriving key encryption keypairs from master password.
+        """
+        curve = P256Curve()
+        
+        # Convert seed to integer and reduce modulo curve order
+        seed_int = int.from_bytes(seed_bytes, 'big')
+        private_key_scalar = (seed_int % (curve.n - 1)) + 1  # Ensure in valid range [1, n-1]
+        
+        # Calculate public key
+        G_point = ECCPoint(curve.G_x, curve.G_y, curve)
+        public_key_point = G_point.scalar_multiply(private_key_scalar)
+        
+        public_key = {
+            "type": "ECC-P256",
+            "x": public_key_point.x,
+            "y": public_key_point.y
+        }
+        
+        private_key = {
+            "type": "ECC-P256",
+            "d": private_key_scalar,
+            "x": public_key_point.x,
+            "y": public_key_point.y
+        }
+        
+        return public_key, private_key
+    
+    @staticmethod
     def encrypt(data, public_key):
         """Encrypt data using ECC (ECDH for key agreement + RSA for encryption)"""
         if isinstance(data, str):

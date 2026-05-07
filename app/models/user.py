@@ -67,12 +67,16 @@ class User(db.Model):
                 user_id=self.id,
                 master_password="default-key-encryption"
             )
-            rsa_private_key = keys['rsa_private']
+            ecc_private_key = keys['ecc_private']
+            rsa_private_key = keys['rsa_private']  # For backward compatibility with legacy data
             
             # Decrypt username
             if self.name_encrypted:
                 result['name'] = DataEncryptionService.decrypt_user_data(
-                    self.name_encrypted, self.name_hmac, rsa_private_key
+                    self.name_encrypted, 
+                    self.name_hmac, 
+                    ecc_private_key=ecc_private_key,
+                    rsa_private_key=rsa_private_key
                 )
             else:
                 result['name'] = self.name
@@ -80,7 +84,10 @@ class User(db.Model):
             # Decrypt email
             if self.email_encrypted:
                 result['email'] = DataEncryptionService.decrypt_user_data(
-                    self.email_encrypted, self.email_hmac, rsa_private_key
+                    self.email_encrypted, 
+                    self.email_hmac, 
+                    ecc_private_key=ecc_private_key,
+                    rsa_private_key=rsa_private_key
                 )
             else:
                 result['email'] = self.email
@@ -88,7 +95,10 @@ class User(db.Model):
             # Decrypt contact info
             if self.contact_info_encrypted:
                 result['contact_info'] = DataEncryptionService.decrypt_user_data(
-                    self.contact_info_encrypted, self.contact_info_hmac, rsa_private_key
+                    self.contact_info_encrypted, 
+                    self.contact_info_hmac, 
+                    ecc_private_key=ecc_private_key,
+                    rsa_private_key=rsa_private_key
                 )
             else:
                 result['contact_info'] = ""
