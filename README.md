@@ -1,58 +1,110 @@
-# Lost and Found Item Tracking Website  
+# Lost and Found Item Tracking
 
-## Overview  
-This project is a web-based platform designed to help users report, search, and recover lost and found items efficiently.  
+A web-based platform for reporting, searching, and recovering lost and found items.
 
-## Features  
+## Environment Requirements
 
-### User Authentication  
-- **Login and Signup**: Users can create an account or log in using their email credentials and are verified before signing up.  
+- Python 3.8 or higher
+- pip (Python package manager)
+- SQLite (included with Python)
 
-### User Dashboard  
-- Provides an overview of all user posts, interactions, and personal information.  
+## Setup Instructions
 
-### Reporting Lost and Found Items  
-- **Lost Items**: Users can submit details about their lost items, including description, date, location, and images.  
-- **Found Items**: Individuals can report found items with relevant details or match them to existing lost item reports.  
+### 1. Clone the Repository
 
-### Searching and Filtering  
-- **Search Lost Items**: Users can search the database for lost items using keywords.  
-- **Filtered Search**: Apply filters like category, date, and location to refine search results.  
+```bash
+git clone <repository-url>
+cd Lost-FoundTracking-Project
+```
 
-### Listings  
-- **Lost Items Listing**: Publicly accessible list of all lost item reports.  
-- **Found Items Listing**: Publicly accessible list of all found item reports.  
+### 2. Create a Virtual Environment
 
-### Matching and Verification  
-- **Automated Matching**: Suggests potential matches between lost and found items based on descriptions and metadata.  
-- **Ownership Verification**: Claimants must provide verification (e.g., questionnaire, unique identifiers, proof of purchase) before retrieving items.  
+```bash
+python3 -m venv venv
+```
 
-### Post Management  
-- Users can add, edit, update status, or delete their item reports.  
+### 3. Activate the Virtual Environment
 
-### Communication and Fraud Prevention  
-- **Chat System**: Enables direct messaging between users to coordinate item returns.  
-- **Fraud Alert**: Flags suspicious claims or activities to prevent fraudulent retrievals.  
+On macOS and Linux:
+```bash
+source venv/bin/activate
+```
 
-### Community Engagement  
-- **Top Contributor Recognition**: Recognizes and rewards users who frequently report and return items through leaderboards or badges.  
-- **Social Media Sharing**: Allows users to share reports on platforms like Facebook and Twitter for increased visibility.  
+On Windows:
+```bash
+venv\Scripts\activate
+```
 
-### Admin Control  
-- Admins can oversee reports, manage disputes, and ensure compliance with platform rules.  
+### 4. Install Dependencies
 
-## Technologies  
-- **Frontend**: HTML, CSS
-- **Backend**: Flask
-- **Database**: SQLite
+```bash
+pip install -r requirements.txt
+```
 
-## Getting Started  
-1. Clone the repository.
-2. Install dependencies.
-3. Run the development server. `> python app.py`
+### 5. Set Up Environment Variables
 
-## Contributing  
-University group based work.
+Create a `.env` file in the project root directory with necessary configuration:
 
-## License  
-This project is licensed under the [MIT License]().
+```bash
+FLASK_APP=run.py
+FLASK_ENV=development
+```
+
+### 6. Initialize the Database
+
+```bash
+flask db upgrade
+```
+
+## How to Run Locally
+
+### Start the Application
+
+```bash
+python3 run.py
+```
+
+The application will start on `http://localhost:5000` by default.
+
+### Access the Application
+
+Open your web browser and navigate to:
+```
+http://localhost:5000
+```
+
+### Test Credentials
+
+The application includes default test accounts:
+
+- Admin Account
+  - Email: admin@test.com
+  - Password: admin123
+
+- Test User Account
+  - Email: user@test.com
+  - Password: user123
+
+## Project Structure
+
+- `app/` - Main application code
+  - `controllers/` - Route handlers
+  - `models/` - Database models
+  - `services/` - Business logic
+  - `repositories/` - Database access
+  - `utils/` - Helper functions
+- `templates/` - HTML templates
+- `static/` - CSS and static assets
+- `migrations/` - Database migration files
+
+## Features
+
+- User authentication and authorization
+- Report lost and found items
+- Search and filter items
+- Real-time chat between users
+- Automated matching suggestions
+- Ownership verification system
+- Admin dashboard
+- Two-factor authentication
+- Data encryption
