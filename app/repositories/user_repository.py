@@ -24,15 +24,17 @@ class UserRepository:
         # Generate RSA and ECC keypairs using KeyManagementService
         rsa_public, rsa_private, ecc_public, ecc_private = KeyManagementService.generate_keypairs()
         
-        # Encrypt user data using RSA
+        # Encrypt user data using ECC for name and email
         name_encrypted, name_hmac = DataEncryptionService.encrypt_user_data(
             name, rsa_public, ecc_public
         )
         email_encrypted, email_hmac = DataEncryptionService.encrypt_user_data(
             email, rsa_public, ecc_public
         )
-        contact_encrypted, contact_hmac = DataEncryptionService.encrypt_user_data(
-            contact_info or "", rsa_public, ecc_public
+        
+        # Encrypt contact info using RSA-2048 (asymmetric algorithm demonstration)
+        contact_encrypted, contact_hmac = DataEncryptionService.encrypt_contact_info_with_rsa(
+            contact_info or "", rsa_public
         )
         
         # Hash password with salt

@@ -163,6 +163,57 @@ class DataEncryptionService:
         return plaintext
     
     @staticmethod
+    def encrypt_contact_info_with_rsa(plaintext, rsa_public_key):
+        """
+        Encrypt contact information using RSA-2048 with OAEP-SHA256
+        Contact info is encrypted separately using RSA for demonstration of both algorithms
+        Returns: (ciphertext_b64, hmac_tag_b64)
+        """
+        if isinstance(plaintext, str):
+            plaintext = plaintext.encode('utf-8')
+        
+        # Encrypt using RSA (handles fixed message sizes up to ~214 bytes with OAEP)
+        ciphertext = RSAEncryption.encrypt(plaintext, rsa_public_key)
+        
+        # Create HMAC for integrity verification using the RSA public key material
+        # The HMAC key is derived from the RSA modulus
+        hmac_key = HMACIntegrity._compute_hmac_raw(
+            rsa_public_key["n"].to_bytes(256, 'big'),
+            b'HMAC-KEY-RSA'
+        )
+        hmac_tag = HMACIntegrity.create_mac(ciphertext.encode('utf-8'), hmac_key)
+        
+        return ciphertext, hmac_tag
+    
+    @staticmethod
+    def decrypt_contact_info_with_rsa(ciphertext, hmac_tag, rsa_private_key, verify_integrity=True):
+        """
+        Decrypt contact information encrypted with RSA-2048
+        Verifies HMAC integrity if verify_integrity=True
+        Returns: plaintext
+        """
+        # Derive HMAC key from RSA private key's modulus
+        hmac_key = HMACIntegrity._compute_hmac_raw(
+            rsa_private_key["n"].to_bytes(256, 'big'),
+            b'HMAC-KEY-RSA'
+        )
+        
+        # Verify HMAC if requested
+        if verify_integrity:
+            expected_hmac = hmac_tag
+            computed_hmac = HMACIntegrity.create_mac(ciphertext.encode('utf-8'), hmac_key)
+            if not HMACIntegrity._constant_time_compare(
+                computed_hmac.encode('utf-8'),
+                expected_hmac.encode('utf-8')
+            ):
+                raise ValueError("HMAC verification failed - contact info data compromised")
+        
+        # Decrypt using RSA
+        plaintext = RSAEncryption.decrypt(ciphertext, rsa_private_key)
+        
+        return plaintext
+    
+    @staticmethod
     def hash_password(password, salt=None):
         """Hash and salt password using PBKDF2"""
         return PasswordHashing.hash_password(password, salt)

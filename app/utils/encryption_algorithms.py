@@ -124,8 +124,8 @@ class PBKDF2:
             password = password.encode('utf-8')
         
         h_len = 32  # SHA256 output length
-        l = (dklen + h_len - 1) // h_len
-        r = dklen - (l - 1) * h_len
+        l = (dklen + h_len - 1) // h_len # Number of blocks needed
+        r = dklen - (l - 1) * h_len # Number of bytes in the last block
         
         T = b''
         for i in range(1, l + 1):
@@ -160,15 +160,15 @@ class ECCPoint:
     def __add__(self, other):
         """Point addition on elliptic curve"""
         if self.is_infinity:
-            return other
+            return other # return the other point if self is infinity because adding infinity to a point yields the point itself
         if other.is_infinity:
-            return self
+            return self # return self if other is infinity because adding infinity to a point yields the point itself
         
         if self.x == other.x:
             if self.y == other.y:
                 return self.double()
             else:
-                return ECCPoint(None, None, self.curve)
+                return ECCPoint(None, None, self.curve) # Point at infinity (identity element) means the points are inverses of each other
         
         slope = ((other.y - self.y) * pow(other.x - self.x, -1, self.curve.p)) % self.curve.p
         x3 = (slope * slope - self.x - other.x) % self.curve.p
@@ -187,9 +187,9 @@ class ECCPoint:
         
         return ECCPoint(x3, y3, self.curve)
     
-    def scalar_multiply(self, k):
+    def scalar_multiply(self, k): 
         """Scalar multiplication using binary method"""
-        if k == 0:
+        if k == 0: # k is
             return ECCPoint(None, None, self.curve)
         
         result = ECCPoint(None, None, self.curve)
@@ -209,7 +209,7 @@ class P256Curve:
     p = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
     a = -3 % p
     b = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b
-    G_x = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296
+    G_x = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296 # Base point G coordinates, where g is the generator point of the curve
     G_y = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
     n = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551
     
@@ -226,7 +226,7 @@ class ECCEncryption:
         curve = P256Curve()
         
         # Generate random private key
-        private_key_scalar = random.randint(1, curve.n - 1)
+        private_key_scalar = random.randint(1, curve.n - 1) # Ensure private key is in valid range [1, n-1] where n is the order of the curve
         
         # Calculate public key
         G_point = ECCPoint(curve.G_x, curve.G_y, curve)
@@ -282,17 +282,17 @@ class ECCEncryption:
     def encrypt(data, public_key):
         """Encrypt data using ECC (ECDH for key agreement + RSA for encryption)"""
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode('utf-8') 
         
         curve = P256Curve()
         
         # Generate ephemeral key pair
         ephemeral_private = random.randint(1, curve.n - 1)
         G_point = ECCPoint(curve.G_x, curve.G_y, curve)
-        ephemeral_public_point = G_point.scalar_multiply(ephemeral_private)
+        ephemeral_public_point = G_point.scalar_multiply(ephemeral_private) # Ephemeral public key point that will be sent with the ciphertext for the recipient to derive the same shared secret
         
         # Recipient's public key point
-        recipient_public = ECCPoint(public_key["x"], public_key["y"], curve)
+        recipient_public = ECCPoint(public_key["x"], public_key["y"], curve) #
         
         # Compute shared secret via ECDH
         shared_secret_point = recipient_public.scalar_multiply(ephemeral_private)
@@ -458,8 +458,6 @@ class RSAEncryption:
     def generate_key_pair_from_seed(seed_bytes):
         """
         Generate RSA 2048-bit key pair deterministically from a seed.
-        COMPLIANCE: Used for asymmetric key encryption (CSE447 requirement).
-        
         Args:
             seed_bytes: Deterministic seed (bytes) - typically from PBKDF2
         
@@ -480,7 +478,7 @@ class RSAEncryption:
         
         # Find next prime >= p_candidate (deterministic based on seed)
         p = p_candidate
-        attempts = 0
+        attempts = 0 
         while not RSAEncryption.is_prime(p) and attempts < 10000:
             p += 2
             attempts += 1
@@ -592,20 +590,20 @@ class RSAEncryption:
     def encrypt(data, public_key):
         """Encrypt data using RSA public key with OAEP padding"""
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode('utf-8') # Ensure data is bytes for encryption
         
         n = public_key["n"]
         e = public_key["e"]
         
-        key_size_bytes = (n.bit_length() + 7) // 8
+        key_size_bytes = (n.bit_length() + 7) // 8 #+7 to round up (ex: 2048 bits = 256 bytes)
         
         padded_message = RSAEncryption.oaep_pad(data, key_size_bytes)
-        m = int.from_bytes(padded_message, byteorder='big')
+        m = int.from_bytes(padded_message, byteorder='big') # Convert padded message to integer for RSA encryption
         c = pow(m, e, n)
         
-        ciphertext = c.to_bytes(key_size_bytes, byteorder='big')
+        ciphertext = c.to_bytes(key_size_bytes, byteorder='big') # Convert ciphertext integer back to bytes
         
-        return base64.b64encode(ciphertext).decode('utf-8')
+        return base64.b64encode(ciphertext).decode('utf-8') # why base64? Because ciphertext is binary data and we want to represent it as a string for storage/transmission
     
     @staticmethod
     def decrypt(encrypted_data, private_key):
@@ -615,11 +613,11 @@ class RSAEncryption:
         
         key_size_bytes = (n.bit_length() + 7) // 8
         
-        ciphertext = base64.b64decode(encrypted_data)
-        c = int.from_bytes(ciphertext, byteorder='big')
+        ciphertext = base64.b64decode(encrypted_data) # Decode from base64 to get original binary ciphertext
+        c = int.from_bytes(ciphertext, byteorder='big') # Convert ciphertext bytes to integer for RSA decryption
         m = pow(c, d, n)
         
-        padded_message = m.to_bytes(key_size_bytes, byteorder='big')
+        padded_message = m.to_bytes(key_size_bytes, byteorder='big') # Convert decrypted integer back to bytes
         plaintext = RSAEncryption.oaep_unpad(padded_message, key_size_bytes)
         
         return plaintext.decode('utf-8')
@@ -639,7 +637,7 @@ class PasswordHashing:
             password = password.encode('utf-8')
         
         if salt is None:
-            salt = os.urandom(32)
+            salt = os.urandom(32)# urandom generates random bytes for salt, which is crucial for password hashing to prevent rainbow table attacks and ensure that even identical passwords hash differently due to unique salts
             generate_salt = True
         else:
             salt = base64.b64decode(salt)

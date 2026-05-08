@@ -92,12 +92,11 @@ class User(db.Model):
             else:
                 result['email'] = self.email
             
-            # Decrypt contact info
+            # Decrypt contact info using RSA-2048
             if self.contact_info_encrypted:
-                result['contact_info'] = DataEncryptionService.decrypt_user_data(
+                result['contact_info'] = DataEncryptionService.decrypt_contact_info_with_rsa(
                     self.contact_info_encrypted, 
                     self.contact_info_hmac, 
-                    ecc_private_key=ecc_private_key,
                     rsa_private_key=rsa_private_key
                 )
             else:
