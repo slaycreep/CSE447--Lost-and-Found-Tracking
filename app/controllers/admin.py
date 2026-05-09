@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, flash, redirect, url_for, request
+from flask import Blueprint, render_template, flash, redirect, url_for, request, jsonify
 from app.services.admin_service import AdminService
 from app.services.user_service import UserService
 from app.services.post_service import PostService
+from app.services.key_management_service import KeyManagementService
 from app.utils.decorators import admin_required, permission_required
 
 admin_bp = Blueprint('admin', __name__)
@@ -158,3 +159,100 @@ def manage_posts():
     }
     posts = post_service.search_posts("", filters)  # Changed to use proper search method
     return render_template('admin/manage_posts.html', posts=posts, filters=filters)
+
+# ======================
+# Key Management Endpoints
+# ======================
+
+@admin_bp.route("/user/<int:user_id>/keys", methods=['GET'])
+@permission_required('admin_access')
+def view_user_keys(user_id):
+    """View encryption key versions for a user (including archived keys)"""
+    from app.models.user import User
+    
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for('admin.manage_users'))
+    
+    try:
+        key_versions = KeyManagementService.list_key_versions(user_id)
+        current_version = KeyManagementService.get_key_version(user_id)
+        return render_template('admin/user_keys.html', 
+                             user=user, 
+                             key_versions=key_versions,
+                             current_version=current_version)
+    except Exception as e:
+        flash(f"Error retrieving key information: {str(e)}", "danger")
+        return redirect(url_for('admin.manage_users'))
+
+@admin_bp.route("/user/<int:user_id>/keys/rotate", methods=['POST'])
+@permission_required('admin_access')
+def rotate_user_keys(user_id):
+    """Rotate encryption keys for a user (generates new keypair, archives old)"""
+    from app.models.user import User
+    
+    user = User.query.get(user_id)
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for('admin.manage_users'))
+    
+    try:
+        result = KeyManagementService.rotate_keys(user_id)
+        new_version = result['new_keys']['key_version']
+        archived_version = result['archived_version']
+        
+        flash(f"Keys rotated successfully! "
+              f"New version: {new_version}, Archived version: {archived_version}", "success")
+        return redirect(url_for('admin.view_user_keys', user_id=user_id))
+    except Exception as e:
+        flash(f"Error rotating keys: {str(e)}", "danger")
+        return redirect(url_for('admin.manage_users'))
+
+@admin_bp.route("/api/user/<int:user_id>/keys/info", methods=['GET'])
+@permission_required('admin_access')
+def api_get_user_keys_info(user_id):
+    """API endpoint to get current key version and info (JSON response)"""
+    from app.models.user import User
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    try:
+        current_version = KeyManagementService.get_key_version(user_id)
+        all_versions = KeyManagementService.list_key_versions(user_id)
+        
+        return jsonify({
+            'user_id': user_id,
+            'user_email': user.email_encrypted[:20] + '***',  # Partial display
+            'current_version': current_version,
+            'total_versions': len(all_versions),
+            'versions': all_versions
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route("/api/user/<int:user_id>/keys/rotate", methods=['POST'])
+@permission_required('admin_access')
+def api_rotate_user_keys(user_id):
+    """API endpoint to rotate keys (JSON response for AJAX requests)"""
+    from app.models.user import User
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    try:
+        result = KeyManagementService.rotate_keys(user_id)
+        return jsonify({
+            'success': True,
+            'message': 'Keys rotated successfully',
+            'new_version': result['new_keys']['key_version'],
+            'archived_version': result['archived_version']
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

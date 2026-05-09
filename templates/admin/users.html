@@ -81,6 +81,11 @@
                                             {{ 'Unban' if user.is_banned else 'Ban' }}
                                         </button>
                                     </form>
+
+                                    <!-- Manage Keys Button -->
+                                    <a href="{{ url_for('admin.view_user_keys', user_id=user.id) }}" class="btn btn-sm btn-secondary" title="Manage encryption keys">
+                                        Keys
+                                    </a>
                                 </div>
                             </td>
                         </tr>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Encryption Keys - {{ user.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-4">
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary">&larr; Back to Users</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Encryption Key Management</h5>
+        </div>
+        <div class="card-body">
+            <h6>User Information</h6>
+            <p>
+                <strong>ID:</strong> {{ user.id }}<br>
+                <strong>Name:</strong> {{ user.name }}<br>
+                <strong>Email:</strong> {{ user.email }}<br>
+                <strong>Current Key Version:</strong> <span class="badge bg-info">{{ current_version }}</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Current Keys Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0">Current Keys (Version {{ current_version }})</h6>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">The active encryption keypairs used for this user's data.</p>
+            <p class="mb-0">
+                <strong>Status:</strong> <span class="badge bg-success">Active</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Key Rotation Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0">Key Rotation</h6>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Rotating keys generates a new RSA-2048 and ECC-P256 keypair for this user and archives the current ones.
+                Data encrypted with old keys remains accessible using the archived keypairs.
+            </p>
+            <form action="{{ url_for('admin.rotate_user_keys', user_id=user.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to rotate this user\'s encryption keys?');">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-sync-alt"></i> Rotate Keys Now
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Key History Section -->
+    {% if key_versions %}
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            <h6 class="mb-0">Key Version History</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Status</th>
+                            <th>Created/Modified</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for version in key_versions %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if version.status == 'current' else 'secondary' }}">
+                                    v{{ version.version }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if version.status == 'current' %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Archived</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if version.created_at %}
+                                    {{ version.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-3">
+                <i class="fas fa-info-circle"></i>
+                <strong>Note:</strong> Archived keys are retained to decrypt data encrypted with older key versions.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Security Info -->
+    <div class="alert alert-info mt-4">
+        <h6><i class="fas fa-shield-alt"></i> Security Information</h6>
+        <ul class="mb-0">
+            <li>Encryption algorithms: RSA-2048 and ECC-P256 (from scratch implementation)</li>
+            <li>Private keys are encrypted at rest using a KEK derived from the master password</li>
+            <li>All user data is encrypted using the user's current public keys</li>
+            <li>Key rotation doesn't re-encrypt existing data automatically (uses key versioning)</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
